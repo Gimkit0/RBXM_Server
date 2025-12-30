@@ -1,21 +1,31 @@
 export default async function handler(req, res) {
-    const assetId = req.query.id;
-    if (!assetId) return res.status(400).send("Missing id");
+    const { id } = req.query;
 
-    const url = `https://assetdelivery.roblox.com/v1/asset/?id=${assetId}`;
-    const response = await fetch(url);
-
-    if (!response.ok) {
-        return res.status(response.status).send("Failed");
+    if (!id || isNaN(id)) {
+        return res.status(400).send("Invalid asset id");
     }
 
-    const buffer = Buffer.from(await response.arrayBuffer());
+    const url = new URL("https://assetdelivery.roproxy.com/v1/asset/");
+    url.searchParams.set("id", id);
 
-    res.setHeader("Content-Type", "application/octet-stream");
-    res.setHeader(
-        "Content-Disposition",
-        `attachment; filename="${assetId}.rbxm"`
-    );
+    try {
+        const response = await fetch(url.toString());
 
-    res.send(buffer);
+        if (!response.ok) {
+            return res.status(response.status).send("Failed to fetch asset");
+        }
+
+        const buffer = Buffer.from(await response.arrayBuffer());
+
+        res.setHeader("Content-Type", "application/octet-stream");
+        res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="${id}.rbxm"`
+        );
+
+        res.status(200).send(buffer);
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Server error");
+    }
 }
